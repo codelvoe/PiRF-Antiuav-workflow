@@ -1,4 +1,4 @@
-﻿# M-CRA Example Framework
+﻿# M-CRA Framework
 
 This repository is organized as a compact example implementation of the M-CRA paper framework.
 
