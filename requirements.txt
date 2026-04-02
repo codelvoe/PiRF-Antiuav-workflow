@@ -1,0 +1,12 @@
+﻿numpy==2.2.6
+pandas==2.3.3
+scipy==1.16.1
+matplotlib==3.9.3
+opencv-python==4.12.0.88
+Pillow==10.4.0
+torch==2.8.0
+torchvision==0.23.0
+ultralytics==8.3.228
+tqdm==4.67.1
+PyYAML==6.0.2
+pypdf==4.3.1

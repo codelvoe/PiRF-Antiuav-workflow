@@ -1,0 +1,68 @@
+# Ultralytics 🚀 AGPL-3.0 License - https://ultralytics.com/license
+
+# YOLOv8n with EDGS (Enhanced Detection for Small UAVs)
+# Based on YOLOv8 architecture with EDGS enhancements: P2 detection, Ghost modules, EMA attention, DCNv2
+
+# Parameters
+nc: 80 # number of classes
+scales: # model compound scaling constants
+  # [depth, width, max_channels]
+  n: [0.33, 0.25, 1024]
+  s: [0.33, 0.50, 1024]
+  m: [0.67, 0.75, 768]
+  l: [1.00, 1.00, 512]
+  x: [1.00, 1.25, 512]
+
+# YOLOv8 backbone (保持原始结构)
+backbone:
+  # [from, repeats, module, args]
+  - [-1, 1, Conv, [64, 3, 2]] # 0-P1/2
+  - [-1, 1, Conv, [128, 3, 2]] # 1-P2/4  <-- 高分辨率特征
+  - [-1, 3, C2f, [128, True]] # 2
+  - [-1, 1, Conv, [256, 3, 2]] # 3-P3/8
+  - [-1, 6, C2f, [256, True]] # 4
+  - [-1, 1, Conv, [512, 3, 2]] # 5-P4/16
+  - [-1, 6, C2f, [512, True]] # 6
+  - [-1, 1, Conv, [1024, 3, 2]] # 7-P5/32
+  - [-1, 3, C2f, [1024, True]] # 8
+  - [-1, 1, SPPF, [1024, 5]] # 9
+
+# YOLOv8 head with EDGS enhancements
+head:
+  # === Neck - 上采样和特征融合 (使用 Ghost 模块和 EMA 注意力) ===
+  
+  # --- 处理 P4 (中型/大型目标) ---
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+  - [[-1, 6], 1, Concat, [1]] # cat backbone P4
+  - [-1, 3, C3Ghost, [512]]   # 12 (用 C3Ghost 替代 C2f)
+  - [-1, 1, EMA, [512]]       # 13 (添加 EMA 注意力)
+
+  # --- 处理 P3 (小型/中型目标) ---
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+  - [[-1, 4], 1, Concat, [1]] # cat backbone P3
+  - [-1, 3, C3Ghost, [256]]   # 16 (用 C3Ghost 替代 C2f)
+  - [-1, 1, EMA, [256]]       # 17 (添加 EMA 注意力)
+
+  # --- 处理 P2 (超小型目标) - 新增层 ---
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]]
+  - [[-1, 2], 1, Concat, [1]] # cat backbone P2 (高分辨率)
+  - [-1, 3, C3Ghost, [128]]   # 20 (处理 P2)
+  - [-1, 1, EMA, [128]]       # 21 (添加 EMA 注意力)
+
+  # --- 下采样路径 (Neck) ---
+  - [-1, 1, GhostConv, [128, 3, 2]] # 22 (下采样)
+  - [[-1, 17], 1, Concat, [1]]      # cat P3
+  - [-1, 3, C3Ghost, [256]]         # 24
+
+  - [-1, 1, GhostConv, [256, 3, 2]] # 25 (下采样)
+  - [[-1, 13], 1, Concat, [1]]      # cat P4
+  - [-1, 3, C3Ghost, [512]]         # 27
+  
+  # === DCNv2 增强 (处理形变) ===
+  - [21, 1, DCNv2, [128]] # 28 (P2 检测输入)
+  - [24, 1, DCNv2, [256]] # 29 (P3 检测输入)
+  - [27, 1, DCNv2, [512]] # 30 (P4 检测输入)
+
+  # === 检测头 ===
+  # 在 P2 (28), P3 (29), P4 (30) 上进行检测
+  - [[28, 29, 30], 1, Detect, [nc]] # Detect(P2, P3, P4)

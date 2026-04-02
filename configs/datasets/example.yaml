@@ -1,0 +1,6 @@
+﻿path: data-sample
+train: rgb
+val: rgb
+test: rgb
+names:
+  0: uav

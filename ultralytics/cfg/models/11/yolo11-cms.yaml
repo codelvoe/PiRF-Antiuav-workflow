@@ -1,0 +1,56 @@
+# Ultralytics YOLO11-CMS object detection model
+# Replaces deeper layers with shallower ones and adds MACF/CAM modules.
+
+# Parameters
+nc: 80 # number of classes
+scales: # model compound scaling constants
+  n: [0.50, 0.25, 1024]
+
+# YOLO11n backbone
+backbone:
+  # [from, repeats, module, args]
+  - [-1, 1, Conv, [64, 3, 2]] # 0-P1/2
+  - [-1, 1, Conv, [128, 3, 2]] # 1-P2/4
+  - [-1, 2, C3k2, [256, False, 0.25]] # 2-P2/4 (256ch)
+  - [-1, 1, Conv, [256, 3, 2]] # 3-P3/8
+  - [-1, 2, C3k2, [512, False, 0.25]] # 4-P3/8 (512ch) (Wait, 512?? Backbone P3 usually 256? Config says 512. Trust config)
+  - [-1, 1, Conv, [512, 3, 2]] # 5-P4/16
+  - [-1, 2, C3k2, [512, True]] # 6-P4/16 (512ch)
+  - [-1, 1, Conv, [1024, 3, 2]] # 7-P5/32
+  - [-1, 2, C3k2, [1024, True]] # 8-P5/32
+  - [-1, 1, SPPF, [1024, 5]] # 9
+  - [-1, 2, C2PSA, [1024]] # 10
+
+# YOLO11n-CMS head
+head:
+  # P5 -> P4
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]] # 11
+  - [[-1, 6], 1, MACF, [512]] # 12 (Fuse with P4)
+  - [-1, 2, C3k2, [512, False]] # 13 (P4 Fused)
+
+  # P4 -> P3
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]] # 14
+  - [[-1, 4], 1, MACF, [512]] # 15 (Fuse with P3). Input 4 is 512ch.
+  - [-1, 2, C3k2, [256, False]] # 16 (P3 Fused, Reduce to 256?)
+
+  # P3 -> P2 (New scale)
+  - [-1, 1, nn.Upsample, [None, 2, "nearest"]] # 17
+  - [[-1, 2], 1, MACF, [256]] # 18 (Fuse with P2). Input 2 is 256ch.
+  - [-1, 2, C3k2, [256, False]] # 19 (P2 Fused)
+
+  # CAM on P2
+  - [-1, 1, CAM, [256]] # 20 (Input 256, Output 256)
+
+  # PAN Bottom-Up
+  # P2 -> P3
+  - [19, 1, Conv, [256, 3, 2]] # 21 (Stride 2). Input 19 (Pre-CAM P2).
+  - [[-1, 16], 1, MACF, [256]] # 22 (Fuse with P3 T-D)
+  - [-1, 2, C3k2, [512, False]] # 23 (P3 Out). Restore to 512? Or Keep 256? 
+  
+  # P3 -> P4
+  - [-1, 1, Conv, [256, 3, 2]] # 24 (Stride 2).
+  - [[-1, 13], 1, MACF, [512]] # 25 (Fuse with P4 T-D).
+  - [-1, 2, C3k2, [512, False]] # 26 (P4 Out).
+
+  # Detect (P2, P3, P4)
+  - [[20, 23, 26], 1, Detect, [nc]] # 27
