@@ -42,14 +42,6 @@ pip install -r requirements.txt
 
 ## Sample Images (from `data-sample`)
 
-Visual/RF input examples:
-
-![visual-rgb-140](data-sample/visual/rgb/140.jpg)
-![visual-rf-140](data-sample/visual/rf/140.png)
-
-![bg-rgb-45717181](data-sample/background/rgb/45717181.jpg)
-![bg-rf-45717181](data-sample/background/rf/45717181.png)
-
 Fusion result examples:
 
 ![state-i](data-sample/result/State_I_13_mavic3%20pro.png)
