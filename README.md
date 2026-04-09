@@ -1,6 +1,6 @@
 ﻿# PiRF Framework
 
-This repository is organized as a compact example implementation of the M-CRA paper framework.
+This repository is organized as a compact example implementation of the PiRF paper framework.
 
 ## Core Modules
 
