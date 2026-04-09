@@ -1,4 +1,4 @@
-﻿# M-CRA Framework
+﻿# PiRF Framework
 
 This repository is organized as a compact example implementation of the M-CRA paper framework.
 
